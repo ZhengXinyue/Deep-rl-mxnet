@@ -219,8 +219,3 @@ plt.ylabel('episode steps')
 plt.title('Double DQN MountainCar-v0')
 plt.savefig('./Double DQN MountainCar-v0.png')
 plt.show()
-
-
-
-
-

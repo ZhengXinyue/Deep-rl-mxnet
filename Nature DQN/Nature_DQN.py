@@ -12,23 +12,18 @@ from mxnet.gluon import loss as gloss
 import gluonbook as gb
 
 
-class Dueling_network(gluon.nn.Block):
-    def __init__(self, n_actions):
-        super(Dueling_network, self).__init__()
-        self.n_actions = n_actions
+class Q_Network(gluon.nn.Block):
+    def __init__(self, n_action):
+        super(Q_Network, self).__init__()
+        self.n_action = n_action
+
         self.dense0 = gluon.nn.Dense(32, activation='relu')
         self.dense1 = gluon.nn.Dense(16, activation='relu')
-        self.advantage_dense = gluon.nn.Dense(self.n_actions)
-        self.state_value_dense = gluon.nn.Dense(1)
+        self.dense2 = gluon.nn.Dense(self.n_action)
 
-    # different from DQN and Double DQN
     def forward(self, state):
-        common_value = self.dense1(self.dense0(state))
-        advantate = self.advantage_dense(common_value)
-        state_value = self.state_value_dense(common_value).squeeze().reshape((state.shape[0], 1))  # use broadcast
-        mean_advantage = (nd.sum(advantate, axis=1) / self.n_actions).detach().reshape((state.shape[0], 1))
-        Q_value = state_value + advantate - mean_advantage
-        return Q_value
+        q_value = self.dense2(self.dense1(self.dense0(state)))
+        return q_value
 
 
 class MemoryBuffer:
@@ -57,7 +52,7 @@ class MemoryBuffer:
         self.buffer.append(transition)
 
 
-class Dueling_DQN:
+class DQN:
     def __init__(self,
                  n_action,
                  n_feature,
@@ -92,8 +87,8 @@ class Dueling_DQN:
         self.replay_buffer = MemoryBuffer(self.buffer_size, ctx)       # use deque
 
         # build the network
-        self.target_network = Dueling_network(n_action)
-        self.main_network = Dueling_network(n_action)
+        self.target_network = Q_Network(n_action)
+        self.main_network = Q_Network(n_action)
         self.target_network.collect_params().initialize(init.Xavier(), ctx=ctx)  # initialize the params
         self.main_network.collect_params().initialize(init.Xavier(), ctx=ctx)
 
@@ -119,17 +114,15 @@ class Dueling_DQN:
         state_batch, action_batch, reward_batch, next_state_batch = self.replay_buffer.sample(
             self.batch_size)
         with autograd.record():
+            # get the maxQ(s',a')
+            all_next_q_value = self.target_network(next_state_batch).detach()  # only get gradient of main network
+            max_next_q_value = nd.max(all_next_q_value, axis=1)
+
+            target_q_value = reward_batch + self.gamma * max_next_q_value
+
             # get the Q(s,a)
             all_current_q_value = self.main_network(state_batch)
             main_q_value = nd.pick(all_current_q_value, action_batch)
-
-            # different from DQN
-            # get next action from main network, then get its Q value from target network
-            all_next_q_value = self.target_network(next_state_batch).detach()  # only get gradient of main network
-            max_action = nd.argmax(all_current_q_value, axis=1)
-            target_q_value = nd.pick(all_next_q_value, max_action).detach()
-
-            target_q_value = reward_batch + self.gamma * target_q_value
 
             # record loss
             loss = gloss.L2Loss()
@@ -139,18 +132,18 @@ class Dueling_DQN:
         self.optimizer.step(batch_size=self.batch_size)
 
     def replace_parameters(self):
-        self.main_network.save_parameters('Dueling DQN temp params')
-        self.target_network.load_parameters('Dueling DQN temp params')
-        print('Dueling DQN parameters replaced')
+        self.main_network.save_parameters('DQN_temp_params')
+        self.target_network.load_parameters('DQN_temp_params')
+        print('DQN_parameters replaced')
 
     def save_parameters(self):
-        self.target_network.save_parameters('Dueling DQN target network parameters')
-        self.main_network.save_parameters('Dueling DQN main network parameters')
+        self.target_network.save_parameters('DQN target network parameters')
+        self.main_network.save_parameters('DQN main network parameters')
 
     #
     def load_parameters(self):
-        self.target_network.load_parameters('Dueling DQN target network parameters')   # model path
-        self.main_network.load_parameters('Dueling DQN main network parameters')
+        self.target_network.load_parameters('DQN target network parameters')   # model path
+        self.main_network.load_parameters('DQN main network parameters')
 
 
 # split a list into n sublists and sum them
@@ -173,18 +166,18 @@ env.seed(seed)
 render = False
 
 
-agent = Dueling_DQN(n_action=env.action_space.n,
-                    n_feature=env.observation_space.shape[0],
-                    init_epsilon=1,
-                    final_epsilon=0.1,
-                    gamma=0.99,
-                    buffer_size=50000,
-                    batch_size=32,
-                    replace_iter=5000,
-                    annealing_end=300000,
-                    learning_rate=0.00005,
-                    ctx=ctx
-                    )
+agent = DQN(n_action=env.action_space.n,
+            n_feature=env.observation_space.shape[0],
+            init_epsilon=1,
+            final_epsilon=0.1,
+            gamma=0.99,
+            buffer_size=50000,
+            batch_size=32,
+            replace_iter=5000,
+            annealing_end=300000,
+            learning_rate=0.00005,
+            ctx=ctx
+            )
 
 # if you want to load model
 # agent.load_parameters()
@@ -210,7 +203,7 @@ for i_episode in range(100):
         episode_steps += 1
 
         if done:
-            print('Dueling DQN episode {} ends with success at time step {}'.format(i_episode, episode_steps))
+            print('DQN episode {} ends with success at time step {}'.format(i_episode, episode_steps))
             episode_steps_list.append(episode_steps)
             break
         state = next_state
@@ -221,6 +214,6 @@ plt.plot(episode_steps_list)
 plt.ylim(0, 20000)
 plt.xlabel('episode')
 plt.ylabel('episode steps')
-plt.title('Dueling DQN MountainCar-v0')
-plt.savefig('./Dueling DQN MountainCar-v0.png')
+plt.title('DQN MountainCar-v0')
+plt.savefig('./DQN MountainCar-v0.png')
 plt.show()
