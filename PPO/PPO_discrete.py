@@ -215,7 +215,7 @@ def main():
     plt.ylabel('reward')
     plt.title('PPO CartPole-v0')
     plt.show()
-    plt.savefig('./PPO CartPole-v0')
+    plt.savefig('./PPO_CartPole_v0')
 
 
 if __name__ == '__main__':
