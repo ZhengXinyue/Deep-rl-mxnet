@@ -41,12 +41,6 @@ class Critic(nn.Block):
         value = self.dense1(x)
         return value
 
-# clip_param = 0.2
-# max_grad_norm = 0.5
-# ppo_update_time = 10
-# buffer_capacity = 1000
-# batch_size = 32
-
 
 class PPO:
     def __init__(self,
@@ -99,12 +93,12 @@ class PPO:
         return value
 
     def save_parameters(self):
-        self.actor_network.save_parameters('%s actor parameters' % time)
-        self.critic_network.save_parameters('%s critic parameters' % time)
+        self.actor_network.save_parameters('PPO discrete actor parameters')
+        self.critic_network.save_parameters('PPO discrete critic parameters')
 
     def load_parameters(self):
-        self.actor_network.load_parameters()
-        self.critic_network.load_parameters()
+        self.actor_network.load_parameters('PPO discrete actor parameters')
+        self.critic_network.load_parameters('PPO discrete critic parameters')
 
     def store_transition(self, transition):
         self.buffer.append(transition)
@@ -168,6 +162,7 @@ class PPO:
 
 env = gym.make('CartPole-v0').unwrapped
 seed = 1
+env.seed(1)
 mx.random.seed(seed)
 np.random.seed(seed)
 random.seed(seed)
@@ -191,7 +186,8 @@ def main():
                 actor_learning_rate=0.001,
                 critic_learning_rate=0.003,
                 ctx=ctx)
-    for episode in range(300):
+    # agent.load()
+    for episode in range(200):
         state = env.reset()
         while True:
             if render:
@@ -206,15 +202,19 @@ def main():
                 episode_reward_list.append(episode_reward)
                 mean_reward = sum(episode_reward_list[-100:]) / 100
                 if mean_reward > 195:
-                    render = True
+                    render = False
                 if len(agent.buffer) >= agent.batch_size:
                     agent.update()
                 break
             state = next_state
     agent.save_parameters()
-    plt.plot(episode_reward_list)
-    plt.show()
     env.close()
+    plt.plot(episode_reward_list)
+    plt.xlabel('episode')
+    plt.ylabel('reward')
+    plt.title('PPO CartPole-v0')
+    plt.show()
+    plt.savefig('./PPO CartPole-v0')
 
 
 if __name__ == '__main__':
