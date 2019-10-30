@@ -209,6 +209,7 @@ def main():
             state = next_state
     agent.save_parameters()
     env.close()
+    
     plt.plot(episode_reward_list)
     plt.xlabel('episode')
     plt.ylabel('reward')
