@@ -3,7 +3,7 @@
  
 # Environment and Package:   
  
- Python 3.6
+ Python 3.6     
  OpenAI gym 0.12.0   
 
  
