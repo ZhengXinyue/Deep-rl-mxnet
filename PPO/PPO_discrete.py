@@ -187,7 +187,7 @@ def main():
                 critic_learning_rate=0.003,
                 ctx=ctx)
     # agent.load()
-    for episode in range(200):
+    for episode in range(165):
         state = env.reset()
         while True:
             if render:
