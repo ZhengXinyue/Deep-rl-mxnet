@@ -3,11 +3,9 @@
  
 # Environment and Package:   
  
- Python 3.7   
+ Python 3.6
  OpenAI gym 0.12.0   
- Numpy 1.16.2   
- Mxnet 1.4.1   
- Matplotlib 3.0.3   
+
  
 # Contents:
  
@@ -22,10 +20,11 @@
  - [Policy Gradient Paper](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
  5. Deep Deterministic Policy Gradient('Pendulum-v0')   
  - [DDPG Paper](https://arxiv.org/abs/1509.02971)
-
+ 6. Proximal Policy Optimization
+ - [PPO Paper1](https://arxiv.org/abs/1707.06347)
+ - [PPO Paper2](https://arxiv.org/abs/1707.02286)
  
 # In the future this will contain:   
  1. Noisy DQN  
  2. A3C   
- 3. PPO   
- 4. TRPO   
+ 3. SAC   
