@@ -64,6 +64,7 @@ class PG:
         for t in reversed(range(0, len(self.rewards))):
             running_add = running_add * self.gamma + self.rewards[t]
             discounted_rewards[t] = running_add
+        # baseline
         discounted_rewards -= np.mean(discounted_rewards)
         discounted_rewards /= np.std(discounted_rewards)
         return discounted_rewards
