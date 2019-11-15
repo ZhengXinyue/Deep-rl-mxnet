@@ -11,7 +11,8 @@ from mxnet import gluon, nd, autograd, init
 from mxnet.gluon import loss as gloss
 import gluonbook as gb
 
-
+def f():
+    pass
 # noise
 class OrnsteinUhlenbeck:
     def __init__(self, action_dim, mu=0, theta=0.15, sigma=0.05):
