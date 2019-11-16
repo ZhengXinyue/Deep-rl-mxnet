@@ -98,6 +98,7 @@ class TD3:
         self.ctx = ctx
 
         self.actor = Actor(self.state_dim, self.action_dim, self.action_bound)
+	self.
 
 
 
