@@ -23,8 +23,9 @@
  6. Proximal Policy Optimization(Discrete and Continuous)
  - [PPO Paper1](https://arxiv.org/abs/1707.06347)
  - [PPO Paper2](https://arxiv.org/abs/1707.02286)
+ 7. TD3('Pendulum-v0')
+ - [TD3 Paper](https://arxiv.org/abs/1802.09477)
  
-# In the future this will contain:   
- 1. Noisy DQN  
- 2. A3C   
- 3. SAC   
+# In the future this will contain:    
+ 1. A3C   
+ 2. SAC   
