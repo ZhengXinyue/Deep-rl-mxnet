@@ -249,10 +249,9 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
     ctx = gb.try_gpu()
-
-    max_episodes = 300
+    ctx = mx.cpu()
+    max_episodes = 50
     max_episode_steps = 500
-    render = True
     env_action_bound = [[float(env.action_space.low), float(env.action_space.high)]]
 
     agent = TD3(state_dim=env.observation_space.shape[0],
@@ -275,6 +274,7 @@ def main():
     mode = input("train or test: ")
 
     if mode == 'train':
+        render = False
         for episode in range(max_episodes):
             episode_reward = 0
             state = env.reset()
@@ -295,11 +295,12 @@ def main():
                     agent.update()
                 if done:
                     break
-            print('episode %d ends with rewards %f ' % (episode, episode_reward))
+            print('episode %d ends with reward %f ' % (episode, episode_reward))
             episode_reward_list.append(episode_reward)
         agent.save_model()
 
     elif mode == 'test':
+        render = True
         agent.load_model()
         for episode in range(max_episodes):
             episode_reward = 0
@@ -315,14 +316,23 @@ def main():
                 state = next_state
                 if done:
                     break
-            print('episode %d ends with rewards %f ' % (episode, episode_reward))
+            print('episode %d ends with reward %f ' % (episode, episode_reward))
             episode_reward_list.append(episode_reward)
     else:
         raise NameError('Wrong input')
+    env.close()
+    plt.plot(episode_reward_list)
+    plt.xlabel('episode')
+    plt.ylabel('reward')
+    plt.title('TD3 Pendulum-v0')
+    if mode == 'train':
+        plt.savefig('./TD3_Pendulum-v0')
+    plt.show()
 
 
 if __name__ == '__main__':
     main()
+
 
 
 
