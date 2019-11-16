@@ -249,7 +249,7 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
     ctx = gb.try_gpu()
-    ctx = mx.cpu()
+
     max_episodes = 300
     max_episode_steps = 500
     render = True
