@@ -189,7 +189,7 @@ class DDPG_Agent:
             actor_loss = -1 * nd.mean(self.main_critic_network(state_batch, pred_action_batch))
         self.main_actor_network.collect_params().zero_grad()
         actor_loss.backward()
-        self.actor_optimizer.step(self.batch_size)
+        self.actor_optimizer.step(1)
 
     def network_hard_update(self):
         self.main_actor_network.save_parameters('main_actor_network')
