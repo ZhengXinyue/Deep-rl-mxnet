@@ -40,9 +40,8 @@ class MemoryBuffer:
 
 
 class Actor(nn.Block):
-    def __init__(self, state_dim, action_dim, action_bound):
+    def __init__(self, action_dim, action_bound):
         super(Actor, self).__init__()
-        self.state_dim = state_dim
         self.action_dim = action_dim
         self.action_bound = action_bound
 
@@ -58,10 +57,8 @@ class Actor(nn.Block):
 
 
 class Critic(nn.Block):
-    def __init__(self, state_dim, action_dim):
+    def __init__(self):
         super(Critic, self).__init__()
-        self.state_dim = state_dim
-        self.action_dim = action_dim
 
         self.dense0 = nn.Dense(400, activation='relu')
         self.dense1 = nn.Dense(300, activation='relu')
@@ -75,7 +72,6 @@ class Critic(nn.Block):
 
 class TD3:
     def __init__(self,
-                 state_dim,
                  action_dim,
                  action_bound,
                  actor_learning_rate,
@@ -90,7 +86,6 @@ class TD3:
                  explore_noise,
                  noise_clip,
                  ctx):
-        self.state_dim = state_dim
         self.action_dim = action_dim
         self.action_bound = nd.array(action_bound, ctx=ctx)
 
@@ -107,12 +102,12 @@ class TD3:
         self.noise_clip = noise_clip
         self.ctx = ctx
 
-        self.main_actor_network = Actor(state_dim, action_dim, self.action_bound)
-        self.target_actor_network = Actor(state_dim, action_dim, self.action_bound)
-        self.main_critic_network1 = Critic(state_dim, action_dim)
-        self.target_critic_network1 = Critic(state_dim, action_dim)
-        self.main_critic_network2 = Critic(state_dim, action_dim)
-        self.target_critic_network2 = Critic(state_dim, action_dim)
+        self.main_actor_network = Actor(action_dim, self.action_bound)
+        self.target_actor_network = Actor(action_dim, self.action_bound)
+        self.main_critic_network1 = Critic()
+        self.target_critic_network1 = Critic()
+        self.main_critic_network2 = Critic()
+        self.target_critic_network2 = Critic()
 
         self.main_actor_network.collect_params().initialize(init=init.Xavier(), ctx=ctx)
         self.target_actor_network.collect_params().initialize(init=init.Xavier(), ctx=ctx)
@@ -254,8 +249,7 @@ def main():
     max_episode_steps = 500
     env_action_bound = [[float(env.action_space.low), float(env.action_space.high)]]
 
-    agent = TD3(state_dim=env.observation_space.shape[0],
-                action_dim=int(env.action_space.shape[0]),
+    agent = TD3(action_dim=int(env.action_space.shape[0]),
                 action_bound=env_action_bound,
                 actor_learning_rate=0.001,
                 critic_learning_rate=0.001,
