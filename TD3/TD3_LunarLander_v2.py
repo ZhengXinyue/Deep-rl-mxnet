@@ -214,35 +214,35 @@ class TD3:
             self.soft_update(self.target_critic_network1, self.main_critic_network1)
             self.soft_update(self.target_critic_network2, self.main_critic_network2)
 
-    def save_model(self):
-        self.main_actor_network.save_parameters('TD3_main_actor_network.params')
-        self.target_actor_network.save_parameters('TD3_target_actor_network_params')
-        self.main_critic_network1.save_parameters('TD3_main_critic_network.params')
-        self.main_critic_network2.save_parameters('TD3_main_critic_network.params')
-        self.target_critic_network1.save_parameters('TD3_target_critic_network.params')
-        self.target_critic_network2.save_parameters('TD3_target_critic_network.params')
+    def save(self):
+        self.main_actor_network.save_parameters('TD3 LunarLander main actor network.params')
+        self.target_actor_network.save_parameters('TD3 LunarLander target actor network_params')
+        self.main_critic_network1.save_parameters('TD3 LunarLander main critic network.params')
+        self.main_critic_network2.save_parameters('TD3 LunarLander main critic network.params')
+        self.target_critic_network1.save_parameters('TD3 LunarLander target critic network.params')
+        self.target_critic_network2.save_parameters('TD3 LunarLander target critic network.params')
 
-    def load_model(self):
-        self.main_actor_network.load_parameters('TD3_main_actor_network.params')
-        self.target_actor_network.load_parameters('TD3_target_actor_network_params')
-        self.main_critic_network1.load_parameters('TD3_main_critic_network.params')
-        self.main_critic_network2.load_parameters('TD3_main_critic_network.params')
-        self.target_critic_network1.load_parameters('TD3_target_critic_network.params')
-        self.target_critic_network2.load_parameters('TD3_target_critic_network.params')
+    def load(self):
+        self.main_actor_network.load_parameters('TD3 LunarLander main actor network.params')
+        self.target_actor_network.load_parameters('TD3 LunarLander target actor network_params')
+        self.main_critic_network1.load_parameters('TD3 LunarLander main critic network.params')
+        self.main_critic_network2.load_parameters('TD3 LunarLander main critic network.params')
+        self.target_critic_network1.load_parameters('TD3 LunarLander target critic network.params')
+        self.target_critic_network2.load_parameters('TD3 LunarLander target critic network.params')
 
 
 def main():
-    env = gym.make('Pendulum-v0').unwrapped
-    seed = 1
-    env.seed(1)
+    env = gym.make('LunarLanderContinuous-v2').unwrapped
+    seed = 3453534
+    env.seed(seed)
     mx.random.seed(seed)
     np.random.seed(seed)
     random.seed(seed)
     ctx = gb.try_gpu()
-    ctx = mx.cpu()
-    max_episodes = 50
-    max_episode_steps = 500
-    env_action_bound = [[float(env.action_space.low), float(env.action_space.high)]]
+    # ctx = mx.cpu()
+    max_episodes = 300
+    max_episode_steps = 2000
+    env_action_bound = [[-1, 1], [-1, 1]]
 
     agent = TD3(action_dim=int(env.action_space.shape[0]),
                 action_bound=env_action_bound,
@@ -276,6 +276,7 @@ def main():
                 else:
                     action = agent.choose_action_train(state)
                     action = action.asnumpy()
+                    agent.total_steps += 1
                 next_state, reward, done, info = env.step(action)
                 agent.memory_buffer.store_transition(state, action, reward, next_state, done)
                 episode_reward += reward
@@ -284,13 +285,13 @@ def main():
                     agent.update()
                 if done:
                     break
-            print('episode %d ends with reward %f ' % (episode, episode_reward))
+            print('episode  %d  reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
             episode_reward_list.append(episode_reward)
-        agent.save_model()
+        agent.save()
 
     elif mode == 'test':
         render = True
-        agent.load_model()
+        agent.load()
         for episode in range(max_episodes):
             episode_reward = 0
             state = env.reset()
@@ -305,33 +306,20 @@ def main():
                 state = next_state
                 if done:
                     break
-            print('episode %d ends with reward %f ' % (episode, episode_reward))
+            print('episode  %d  reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
             episode_reward_list.append(episode_reward)
     else:
         raise NameError('Wrong input')
+
     env.close()
     plt.plot(episode_reward_list)
     plt.xlabel('episode')
     plt.ylabel('reward')
-    plt.title('TD3 Pendulum-v0')
+    plt.title('TD3 LunarLanderContinuous-v2')
     if mode == 'train':
-        plt.savefig('./TD3_Pendulum-v0')
+        plt.savefig('./LunarLanderContinuous_v2')
     plt.show()
 
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-

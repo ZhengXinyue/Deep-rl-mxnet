@@ -47,7 +47,7 @@ class PPO:
                  n_action,
                  clip_param,
                  max_grad_norm,
-                 ppo_update_time,
+                 ppo_update_times,
                  buffer_capacity,
                  batch_size,
                  gamma,
@@ -57,7 +57,7 @@ class PPO:
         self.n_action = n_action
         self.clip_param = clip_param
         self.max_grad_norm = max_grad_norm
-        self.ppo_update_time = ppo_update_time
+        self.ppo_update_times = ppo_update_times
         self.buffer_capacity = buffer_capacity
         self.batch_size = batch_size
         self.gamma = gamma
@@ -119,7 +119,7 @@ class PPO:
         Gt = nd.array(Gt, ctx=self.ctx)
         # sample 'ppo_update_time' times
         # sample 'batch_size' samples every time
-        for i in range(self.ppo_update_time):
+        for i in range(self.ppo_update_times):
             assert len(self.buffer) >= self.batch_size
             sample_index = random.sample(range(len(self.buffer)), self.batch_size)
             for index in sample_index:
@@ -161,7 +161,7 @@ class PPO:
 
 
 env = gym.make('CartPole-v0').unwrapped
-seed = 1
+seed = 23424
 env.seed(1)
 mx.random.seed(seed)
 np.random.seed(seed)
@@ -179,7 +179,7 @@ def main():
     agent = PPO(n_action=num_acion,
                 clip_param=0.2,
                 max_grad_norm=0.5,
-                ppo_update_time=10,
+                ppo_update_times=10,
                 buffer_capacity=1000,
                 batch_size=32,
                 gamma=0.99,
@@ -187,7 +187,7 @@ def main():
                 critic_learning_rate=0.003,
                 ctx=ctx)
     # agent.load()
-    for episode in range(165):
+    for episode in range(90):
         state = env.reset()
         while True:
             if render:
@@ -200,9 +200,9 @@ def main():
                 episode_reward = sum([t.reward for t in agent.buffer])
                 print('episode %d  reward  %d' % (episode, episode_reward))
                 episode_reward_list.append(episode_reward)
-                mean_reward = sum(episode_reward_list[-100:]) / 100
+                mean_reward = sum(episode_reward_list[-50:]) / 50
                 if mean_reward > 195:
-                    render = False
+                    render = True
                 if len(agent.buffer) >= agent.batch_size:
                     agent.update()
                 break
@@ -214,8 +214,8 @@ def main():
     plt.xlabel('episode')
     plt.ylabel('reward')
     plt.title('PPO CartPole-v0')
-    plt.show()
     plt.savefig('./PPO_CartPole_v0')
+    plt.show()
 
 
 if __name__ == '__main__':

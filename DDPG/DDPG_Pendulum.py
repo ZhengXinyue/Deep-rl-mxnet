@@ -161,7 +161,7 @@ class DDPG_Agent:
                 (1 - self.tau) + main_network.collect_params()[y].data() * self.tau
 
     def update(self):
-        state_batch, action_batch, reward_batch, next_state_batch, done_batch= self.memory_buffer.sample(self.batch_size)
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.memory_buffer.sample(self.batch_size)
 
         # ---------------optimize critic------------------
         with autograd.record():
@@ -202,15 +202,15 @@ class DDPG_Agent:
 
 def main():
     env = gym.make('Pendulum-v0').unwrapped
-    seed = 1
-    env.seed(1)
+    seed = 234234
+    env.seed(seed)
     mx.random.seed(seed)
     np.random.seed(seed)
     random.seed(seed)
     ctx = gb.try_gpu()
     # ctx = mx.cpu()
-    max_episodes = 8
-    max_episode_steps = 500      # this doesn't matter, because this env itself has max episode steps(200) constraint.
+    max_episodes = 50
+    max_episode_steps = 500
     env_action_bound = [[float(env.action_space.low), float(env.action_space.high)]]
 
     agent = DDPG_Agent(action_dim=int(env.action_space.shape[0]),
@@ -252,7 +252,7 @@ def main():
                     agent.update()
                 if done:
                     break
-            print('episode  %d  ends with reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
+            print('episode  %d  reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
             episode_reward_list.append(episode_reward)
         agent.save()
 
@@ -273,7 +273,7 @@ def main():
                 state = next_state
                 if done:
                     break
-            print('episode  %d  ends with reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
+            print('episode  %d  reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
             episode_reward_list.append(episode_reward)
     else:
         raise NameError('Wrong input')
