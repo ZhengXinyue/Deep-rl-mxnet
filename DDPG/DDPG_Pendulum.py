@@ -273,7 +273,7 @@ def main():
                 state = next_state
                 if done:
                     break
-            print('episode %d ends with reward %f ' % (episode, episode_reward))
+            print('episode  %d  ends with reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
             episode_reward_list.append(episode_reward)
     else:
         raise NameError('Wrong input')

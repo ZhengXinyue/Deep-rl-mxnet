@@ -208,7 +208,7 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
     ctx = gb.try_gpu()
-    ctx = mx.cpu()
+    # ctx = mx.cpu()
     max_episodes = 2000
     max_episode_steps = 2000   # this doesn't matter, because this env itself has max episode steps(1000) constraint.
     env_action_bound = [[-1, 1], [-1, 1]]
@@ -243,7 +243,6 @@ def main():
                 else:
                     action = agent.choose_action_train(state)
                     action = action.asnumpy()
-                    print(action)
                     agent.total_steps += 1
                 next_state, reward, done, info = env.step(action)
                 agent.memory_buffer.store_transition(state, action, reward, next_state, done)
@@ -253,7 +252,7 @@ def main():
                     agent.update()
                 if done:
                     break
-            print('episode %d ends with reward %f ' % (episode, episode_reward))
+            print('episode  %d  ends with reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
             episode_reward_list.append(episode_reward)
         agent.save()
 
