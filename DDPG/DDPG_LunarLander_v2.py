@@ -32,7 +32,7 @@ class ActorNetwork(nn.Block):
 
     def forward(self, state):
         action = self.dense2(self.dense1(self.dense0(state)))
-        upper_bound = self.action_bound[:, 1]
+        upper_bound = self.action_bound[:, 1]    # scale
         action = action * upper_bound
         return action
 
@@ -208,9 +208,9 @@ def main():
     np.random.seed(seed)
     random.seed(seed)
     ctx = gb.try_gpu()
-    # ctx = mx.cpu()
-    max_episodes = 50
-    max_episode_steps = 2000   # this doesn't matter, because this env itself has max episode steps constraint.
+    ctx = mx.cpu()
+    max_episodes = 2000
+    max_episode_steps = 2000   # this doesn't matter, because this env itself has max episode steps(1000) constraint.
     env_action_bound = [[-1, 1], [-1, 1]]
 
     agent = DDPG_Agent(action_dim=int(env.action_space.shape[0]),
@@ -230,7 +230,7 @@ def main():
     mode = input("train or test: ")
 
     if mode == 'train':
-        render = True
+        render = False
         for episode in range(max_episodes):
             episode_reward = 0
             state = env.reset()
@@ -243,6 +243,7 @@ def main():
                 else:
                     action = agent.choose_action_train(state)
                     action = action.asnumpy()
+                    print(action)
                     agent.total_steps += 1
                 next_state, reward, done, info = env.step(action)
                 agent.memory_buffer.store_transition(state, action, reward, next_state, done)
@@ -273,7 +274,7 @@ def main():
                 state = next_state
                 if done:
                     break
-            print('episode %d ends with reward %f ' % (episode, episode_reward))
+            print('episode  %d  ends with reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
             episode_reward_list.append(episode_reward)
     else:
         raise NameError('Wrong input')

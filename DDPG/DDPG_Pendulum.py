@@ -33,7 +33,7 @@ class ActorNetwork(nn.Block):
     def forward(self, state):
         action = self.dense2(self.dense1(self.dense0(state)))
         upper_bound = self.action_bound[:, 1]
-        action = action * upper_bound
+        action = action * upper_bound     # scale
         return action
 
 
@@ -210,7 +210,7 @@ def main():
     ctx = gb.try_gpu()
     # ctx = mx.cpu()
     max_episodes = 8
-    max_episode_steps = 500
+    max_episode_steps = 500      # this doesn't matter, because this env itself has max episode steps(200) constraint.
     env_action_bound = [[float(env.action_space.low), float(env.action_space.high)]]
 
     agent = DDPG_Agent(action_dim=int(env.action_space.shape[0]),
@@ -252,7 +252,7 @@ def main():
                     agent.update()
                 if done:
                     break
-            print('episode %d ends with reward %f ' % (episode, episode_reward))
+            print('episode  %d  ends with reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
             episode_reward_list.append(episode_reward)
         agent.save()
 
