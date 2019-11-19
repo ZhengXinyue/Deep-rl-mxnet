@@ -8,37 +8,8 @@ import matplotlib.pyplot as plt
 
 import mxnet as mx
 from mxnet import gluon, nd, autograd, init
-from mxnet.gluon import loss as gloss
+from mxnet.gluon import loss as gloss, nn
 import gluonbook as gb
-
-
-# noise
-class OrnsteinUhlenbeck:
-    def __init__(self, action_dim, mu=0, theta=0.15, sigma=0.05):
-        self.action_dim = action_dim
-        self.mu = mu
-        self.theta = theta
-        self.sigma = sigma
-        self.X = nd.ones(self.action_dim) * self.mu
-
-    def reset(self):
-        self.X = nd.ones(self.action_dim) * self.mu
-
-    def sample(self):
-        dx = self.theta * (self.mu - self.X)
-        dx = dx + self.sigma * nd.random.randn(len(self.X))
-        self.X += dx
-        return self.X
-
-
-# parameters soft update
-def soft_update(target_network, main_network, tau):
-    value1 = target_network.collect_params().keys()
-    value2 = main_network.collect_params().keys()
-    d = zip(value1, value2)
-    for x, y in d:
-        target_network.collect_params()[x].data()[:] = target_network.collect_params()[x].data() * (1 - tau) + \
-                                                       main_network.collect_params()[y].data() * tau
 
 
 def smooth_function(l, n):
@@ -49,35 +20,34 @@ def smooth_function(l, n):
     return m
 
 
-class ActorNetwork(gluon.nn.Block):
+class ActorNetwork(nn.Block):
     def __init__(self, action_dim, action_bound):
         super(ActorNetwork, self).__init__()
         self.action_dim = action_dim
         self.action_bound = action_bound
-        self.dense0 = gluon.nn.Dense(64, activation='relu')
-        self.dense1 = gluon.nn.Dense(32, activation='relu')
-        # use tanh to get action [-1, 1]
-        self.dense2 = gluon.nn.Dense(action_dim, activation='tanh')
+
+        self.dense0 = nn.Dense(400, activation='relu')
+        self.dense1 = nn.Dense(300, activation='relu')
+        self.dense2 = nn.Dense(self.action_dim, activation='tanh')
 
     def forward(self, state):
         action = self.dense2(self.dense1(self.dense0(state)))
-        # scale
-        action = action * self.action_bound
+        upper_bound = self.action_bound[:, 1]
+        action = action * upper_bound
         return action
 
 
-# Input (s, a), output q
-class CriticNetwork(gluon.nn.Block):
+class CriticNetwork(nn.Block):
     def __init__(self):
         super(CriticNetwork, self).__init__()
-        self.dense0 = gluon.nn.Dense(64, activation='relu')
-        self.dense1 = gluon.nn.Dense(32, activation='relu')
-        self.dense2 = gluon.nn.Dense(1)
+        self.dense0 = nn.Dense(400, activation='relu')
+        self.dense1 = nn.Dense(300, activation='relu')
+        self.dense2 = nn.Dense(1)
 
     def forward(self, state, action):
-        feature = nd.concat(state, action, dim=1)
-        value = self.dense2(self.dense1(self.dense0(feature)))
-        return value
+        input = nd.concat(state, action, dim=1)
+        q_value = self.dense2(self.dense1(self.dense0(input)))
+        return q_value
 
 
 class MemoryBuffer:
@@ -99,16 +69,16 @@ class MemoryBuffer:
         action_batch = nd.array([data[1] for data in minibatch], ctx=self.ctx)
         reward_batch = nd.array([data[2] for data in minibatch], ctx=self.ctx)
         next_state_batch = nd.array([data[3] for data in minibatch], ctx=self.ctx)
-        return state_batch, action_batch, reward_batch, next_state_batch
+        done = nd.array([data[4] for data in minibatch], ctx=self.ctx)
+        return state_batch, action_batch, reward_batch, next_state_batch, done
 
-    def store_transition(self, state, action, reward, next_state):
-        transition = (state, action, reward, next_state)
+    def store_transition(self, state, action, reward, next_state, done):
+        transition = (state, action, reward, next_state, done)
         self.buffer.append(transition)
 
 
 class DDPG_Agent:
     def __init__(self,
-                 state_dim,
                  action_dim,
                  action_bound,
                  actor_learning_rate,
@@ -116,24 +86,25 @@ class DDPG_Agent:
                  batch_size,
                  memory_size,
                  gamma,
-                 ctx,
-                 replace_iter=None,   # for hard update
-                 tau=0.01,
+                 tau,
+                 explore_steps,
+                 explore_noise,
+                 noise_clip,
+                 ctx
                  ):
-        self.state_dim = state_dim
         self.action_dim = action_dim
-        self.action_bound = action_bound
+        self.action_bound = nd.array(action_bound, ctx=ctx)
         self.actor_learning_rate = actor_learning_rate
         self.critic_learning_rate = critic_learning_rate
         self.batch_size = batch_size
         self.memory_size = memory_size
         self.gamma = gamma
-        self.replace_iter = replace_iter   # for hard update
-        self.steps = 0
-        self.tau = tau   # for soft update
+        self.tau = tau
+        self.explore_steps = explore_steps
+        self.explore_noise = explore_noise
+        self.noise_clip = noise_clip
         self.ctx = ctx
-
-        self.noise = OrnsteinUhlenbeck(self.action_dim)
+        self.total_steps = 0
 
         self.memory_buffer = MemoryBuffer(self.memory_size, ctx=ctx)
 
@@ -154,31 +125,53 @@ class DDPG_Agent:
                                               'adam',
                                               {'learning_rate': self.critic_learning_rate})
 
-    def choose_action_explore(self, state):
+    def choose_action_train(self, state):
         state = nd.array([state], ctx=self.ctx)
-        explore_action = self.main_actor_network(state).squeeze()
-        # add noise
-        explore_action += nd.array(self.noise.sample() * self.action_bound, ctx=self.ctx)
-        return explore_action
+        action = self.main_actor_network(state)
+        # no noise clip
+        noise = nd.normal(loc=0, scale=self.explore_noise, shape=action.shape, ctx=self.ctx)
+        action += noise
+        clipped_action = self.action_clip(action).squeeze()
+        return clipped_action
 
-    def choose_action_greedily(self, state):
+    def choose_action_evaluate(self, state):
         state = nd.array([state], ctx=self.ctx)
-        # no noise
-        greedy_action = self.target_actor_network(state).squeeze().asnumpy()
-        return greedy_action
+        action = self.main_actor_network(state)
+        return action
 
-    def optimize(self):
-        state_batch, action_batch, reward_batch, next_state_batch = self.memory_buffer.sample(self.batch_size)
+    def action_clip(self, action):
+        if len(action[0]) == 2:
+            action0 = nd.clip(action[:, 0], float(self.action_bound[0][0].asnumpy()),
+                              float(self.action_bound[0][1].asnumpy()))
+            action1 = nd.clip(action[:, 1], float(self.action_bound[1][0].asnumpy()),
+                              float(self.action_bound[1][1].asnumpy()))
+            clipped_action = nd.concat(action0.reshape(-1, 1), action1.reshape(-1, 1))
+        else:
+            clipped_action = nd.clip(action, float(self.action_bound[0][0].asnumpy()),
+                                     float(self.action_bound[0][1].asnumpy()))
+        return clipped_action
+
+    def soft_update(self, target_network, main_network):
+        target_parameters = target_network.collect_params().keys()
+        main_parameters = main_network.collect_params().keys()
+        d = zip(target_parameters, main_parameters)
+        for x, y in d:
+            target_network.collect_params()[x].data()[:] = \
+                target_network.collect_params()[x].data() * \
+                (1 - self.tau) + main_network.collect_params()[y].data() * self.tau
+
+    def update(self):
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch= self.memory_buffer.sample(self.batch_size)
 
         # ---------------optimize critic------------------
         with autograd.record():
-            next_action_batch = self.target_actor_network(next_state_batch).detach()
-            next_q = self.target_critic_network(next_state_batch, next_action_batch).detach().squeeze()
-            target_q = reward_batch + self.gamma * next_q
+            next_action_batch = self.target_actor_network(next_state_batch)
+            next_q = self.target_critic_network(next_state_batch, next_action_batch).squeeze()
+            target_q = reward_batch + (1 - done_batch) * self.gamma * next_q
 
-            eval_q = self.main_critic_network(state_batch, action_batch)
+            current_q = self.main_critic_network(state_batch, action_batch)
             loss = gloss.L2Loss()
-            value_loss = loss(target_q, eval_q)
+            value_loss = loss(target_q.detach(), current_q)
         self.main_critic_network.collect_params().zero_grad()
         value_loss.backward()
         self.critic_optimizer.step(self.batch_size)
@@ -186,21 +179,13 @@ class DDPG_Agent:
         # ---------------optimize actor-------------------
         with autograd.record():
             pred_action_batch = self.main_actor_network(state_batch)
-            actor_loss = -1 * nd.mean(self.main_critic_network(state_batch, pred_action_batch))
+            actor_loss = -nd.mean(self.main_critic_network(state_batch, pred_action_batch))
         self.main_actor_network.collect_params().zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step(1)
 
-    def network_hard_update(self):
-        self.main_actor_network.save_parameters('main_actor_network')
-        self.target_actor_network.load_parameters('main_actor_network')
-        self.main_critic_network.save_parameters('main_critic_network')
-        self.target_critic_network.load_parameters('main_critic_network')
-        print('params hard replaced')
-
-    def network_soft_update(self):
-        soft_update(self.target_actor_network, self.main_actor_network, self.tau)
-        soft_update(self.target_critic_network, self.main_critic_network, self.tau)
+        self.soft_update(self.target_actor_network, self.main_actor_network)
+        self.soft_update(self.target_critic_network, self.main_critic_network)
 
     def save(self):
         self.main_actor_network.save_parameters('DDPG Main Actor.params')
@@ -215,66 +200,94 @@ class DDPG_Agent:
         self.target_critic_network.load_parameters('DDPG Target Critic.params')
 
 
-env = gym.make('Pendulum-v0').unwrapped
-seed = 1
-env.seed(1)
-np.random.seed(1)
-mx.random.seed(1)
-ctx= gb.try_gpu()
+def main():
+    env = gym.make('Pendulum-v0').unwrapped
+    seed = 1
+    env.seed(1)
+    mx.random.seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    ctx = gb.try_gpu()
+    # ctx = mx.cpu()
+    max_episodes = 30
+    max_episode_steps = 500
+    env_action_bound = [[float(env.action_space.low), float(env.action_space.high)]]
 
-action_dim = env.action_space.shape[0]         # 1
-action_bound = env.action_space.high[0]        # 2
-state_dim = env.observation_space.shape[0]        # 3
+    agent = DDPG_Agent(action_dim=int(env.action_space.shape[0]),
+                       action_bound=env_action_bound,
+                       actor_learning_rate=0.001,
+                       critic_learning_rate=0.001,
+                       batch_size=64,
+                       memory_size=100000,
+                       gamma=0.99,
+                       tau=0.005,
+                       explore_steps=1000,
+                       explore_noise=0.1,
+                       noise_clip=0.5,
+                       ctx=ctx)
 
-MAX_episodes = 100
-MAX_episode_steps = 1000
+    episode_reward_list = []
+    mode = input("train or test: ")
+
+    if mode == 'train':
+        render = False
+        for episode in range(max_episodes):
+            episode_reward = 0
+            state = env.reset()
+            for step in range(max_episode_steps):
+                if render:
+                    env.render()
+                if agent.total_steps < agent.explore_steps:
+                    action = env.action_space.sample()
+                    agent.total_steps += 1
+                else:
+                    action = agent.choose_action_train(state)
+                    action = action.asnumpy()
+                    agent.total_steps += 1
+                next_state, reward, done, info = env.step(action)
+                agent.memory_buffer.store_transition(state, action, reward, next_state, done)
+                episode_reward += reward
+                state = next_state
+                if agent.total_steps >= agent.explore_steps:
+                    agent.update()
+                if done:
+                    break
+            print('episode %d ends with reward %f ' % (episode, episode_reward))
+            episode_reward_list.append(episode_reward)
+        agent.save()
+
+    elif mode == 'test':
+        render = True
+        agent.load()
+        for episode in range(max_episodes):
+            episode_reward = 0
+            state = env.reset()
+            for step in range(max_episode_steps):
+                if render:
+                    env.render()
+                action = agent.choose_action_train(state)
+                action = action.asnumpy()
+                next_state, reward, done, info = env.step(action)
+                agent.memory_buffer.store_transition(state, action, reward, next_state, done)
+                episode_reward += reward
+                state = next_state
+                if done:
+                    break
+            print('episode %d ends with reward %f ' % (episode, episode_reward))
+            episode_reward_list.append(episode_reward)
+    else:
+        raise NameError('Wrong input')
+
+    env.close()
+    plt.plot(episode_reward_list)
+    plt.xlabel('episode')
+    plt.ylabel('reward')
+    plt.title('DDPG Pendulum-v0')
+    if mode == 'train':
+        plt.savefig('./DDPG_Pendulum-v0')
+    plt.show()
 
 
-agent = DDPG_Agent(state_dim,
-                   action_dim,
-                   action_bound,
-                   actor_learning_rate=0.0001,
-                   critic_learning_rate=0.001,
-                   batch_size=32,
-                   memory_size=100000,
-                   gamma=0.99,
-                   ctx=ctx,
-                   replace_iter=3000,   # for hard update if needed
-                   tau=0.01,
-                   )
+if __name__ == '__main__':
+    main()
 
-
-# you can get SOTA performance if you load the parameters
-# agent.load()
-episode_reward_list = []
-for episode in range(MAX_episodes):
-    episode_reward = 0
-    state = env.reset()
-    for step in range(MAX_episode_steps):
-        # get SOTA results at about 40th episode using this parameters
-        if episode > 40:
-            env.render()
-        action = agent.choose_action_explore(state)
-
-        next_state, reward, done, info = env.step(action.asnumpy())
-        agent.memory_buffer.store_transition(state, action.asnumpy(), reward, next_state)
-        agent.steps += 1
-        episode_reward += reward
-        if len(agent.memory_buffer) > 1000:
-            agent.optimize()
-            agent.network_soft_update()
-        if done:
-            break
-
-        state = next_state
-    print('episode %d ends with rewards %f ' % (episode, episode_reward))
-    episode_reward_list.append(episode_reward)
-env.close()
-agent.save()
-
-plt.plot(episode_reward_list)
-plt.xlabel('episode')
-plt.ylabel('reward')
-plt.title('DDPG Pendulum-v0')
-plt.savefig('./DDPG Pendulum-v0')
-plt.show()

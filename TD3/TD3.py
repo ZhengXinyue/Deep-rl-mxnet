@@ -143,21 +143,16 @@ class TD3:
 
     def choose_action_evaluate(self, state):
         state = nd.array([state], ctx=self.ctx)
-        action = self.main_actor_network(state).squeeze()
+        action = self.main_actor_network(state)
         return action
 
     def action_clip(self, action):
-        n = len(self.action_bound)
-        action_list = []
-        for i in range(n):
-            action = nd.clip(action[:, i],
-                             a_min=float(self.action_bound[i][0].asnumpy()),
-                             a_max=float(self.action_bound[i][1].asnumpy()))
-            action_list.append(action.reshape(-1, 1))
-        if len(action_list) == 1:
-            return action_list[0]
+        if len(action[0]) == 2:
+            action0 = nd.clip(action[:, 0], float(self.action_bound[0][0].asnumpy()), float(self.action_bound[0][1].asnumpy()))
+            action1 = nd.clip(action[:, 1], float(self.action_bound[1][0].asnumpy()), float(self.action_bound[1][1].asnumpy()))
+            clipped_action = nd.concat(action0.reshape(-1, 1), action1.reshape(-1, 1))
         else:
-            clipped_action = 1  # -------------
+            clipped_action = nd.clip(action, float(self.action_bound[0][0].asnumpy()), float(self.action_bound[0][1].asnumpy()))
         return clipped_action
 
     def soft_update(self, target_network, main_network):
@@ -171,7 +166,7 @@ class TD3:
 
     def update(self):
         self.total_train_steps += 1
-        state_batch, action_batch, reward_batch, next_state_batch, done = self.memory_buffer.sample(self.batch_size)
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.memory_buffer.sample(self.batch_size)
 
         # --------------optimize the critic network--------------------
         with autograd.record():
@@ -187,7 +182,7 @@ class TD3:
             target_q_value1 = self.target_critic_network1(next_state_batch, clipped_action)
             target_q_value2 = self.target_critic_network2(next_state_batch, clipped_action)
             target_q_value = nd.minimum(target_q_value1, target_q_value2).squeeze()
-            target_q_value = reward_batch + (1.0 - done) * (self.gamma * target_q_value)
+            target_q_value = reward_batch + (1.0 - done_batch) * (self.gamma * target_q_value)
 
             # get current q value
             current_q_value1 = self.main_critic_network1(state_batch, action_batch)
