@@ -138,7 +138,6 @@ class TD3:
         noise = nd.normal(loc=0, scale=self.explore_noise, shape=action.shape, ctx=self.ctx)
         action += noise
         clipped_action = self.action_clip(action).squeeze()
-        self.total_steps += 1
         return clipped_action
 
     def choose_action_evaluate(self, state):
