@@ -215,7 +215,7 @@ class TD3:
 
     def save(self):
         self.main_actor_network.save_parameters('TD3_main_actor_network.params')
-        self.target_actor_network.save_parameters('TD3_target_actor_network_params')
+        self.target_actor_network.save_parameters('TD3_target_actor_network.params')
         self.main_critic_network1.save_parameters('TD3_main_critic_network.params')
         self.main_critic_network2.save_parameters('TD3_main_critic_network.params')
         self.target_critic_network1.save_parameters('TD3_target_critic_network.params')
@@ -223,7 +223,7 @@ class TD3:
 
     def load(self):
         self.main_actor_network.load_parameters('TD3_main_actor_network.params')
-        self.target_actor_network.load_parameters('TD3_target_actor_network_params')
+        self.target_actor_network.load_parameters('TD3_target_actor_network.params')
         self.main_critic_network1.load_parameters('TD3_main_critic_network.params')
         self.main_critic_network2.load_parameters('TD3_main_critic_network.params')
         self.target_critic_network1.load_parameters('TD3_target_critic_network.params')
