@@ -2,13 +2,13 @@
  Mxnet implementation of Deep Reinforcement Learning papers.
  
 ## Now this repository contains:
- - DQN (Simple implementation)
- - Double DQN (Simple implementation)
- - Dueling DQN (Simple implementation)
- - Policy Gradient (Simple implementation)
- - DDPG (Detailed implementation) :star:
- - PPO (Simple implementation)
- - TD3 (Very detailed implementation) :star: :star:
+ - DQN (Simple implementation) -->[MountainCar-v0](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Nature%20DQN/Nature_DQN.py)
+ - Double DQN (Simple implementation) -->[MountainCar-v0](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Double%20DQN/Double_DQN.py)
+ - Dueling DQN (Simple implementation) -->[MountainCar-v0](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Dueling%20DQN/Dueling_DQN.py)
+ - Policy Gradient (Simple implementation) -->[CartPole-v0](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Policy%20Gradient/Policy_Gradient.py)
+ - DDPG (Detailed implementation) :star: -->[Pendulum-v0](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/DDPG/DDPG_Pendulum.py),[LunarLander-v2](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/DDPG/DDPG_LunarLander_v2.py)
+ - PPO (Simple implementation) -->[CartPole-v0](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/PPO/PPO_discrete.py)
+ - TD3 (Very detailed implementation) :star: :star: -->[Pendulum-v0](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/TD3/TD3_Pendulum.py),[LunarLander-v2](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/TD3/TD3_LunarLander_v2.py),[HalfCheetah-v2](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/TD3/TD3_HalfCheetahv2.py)
  
 ## In the future this will contain:    
  1. A3C   
