@@ -6,8 +6,8 @@
  - Python 3   
  - OpenAI gym
  - Mxnet(gpu or cpu) and gluonbook 
- - Box2d
- - Mujoco 
+ - Box2d(optional)
+ - Mujoco(optional)
  
 ## Basic Installation:
 ```
