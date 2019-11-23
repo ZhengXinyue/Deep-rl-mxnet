@@ -5,15 +5,16 @@
  
  - Python 3   
  - OpenAI gym
- - mxnet(gpu or cpu) and gluonbook 
- - some need box2d and mujoco 
+ - Mxnet(gpu or cpu) and gluonbook 
+ - Box2d
+ - Mujoco 
  
 ## Basic Installation:
 ```
 pip install gym
 pip install gluonbook
 pip install mxnet  (cpu version)
-pip install mxnet-cu90  (gpu version, Corresponding to your cuda version)
+pip install mxnet-cu90  (gpu version, corresponding to your cuda version)
 ```
 ## Box2d Installation(Optional):
 ```
@@ -34,28 +35,28 @@ Please refer to [this repository](https://github.com/openai/mujoco-py)
 
 ## Contents:
  
- 1. DQN 
+ 1. DQN (Simple implementation)
  - [Playing Atari with Deep Reinforcement Learning](https://arxiv.org/abs/1312.5602v1)
  - [Human-level control through deep reinforcement learning](https://www.nature.com/articles/nature14236)    
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Nature%20DQN/DQN%20MountainCar-v0.png)
- 2. Double DQN
+ 2. Double DQN (Simple implementation)
  - [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461v3)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Double%20DQN/Double%20DQN%20MountainCar-v0.png)
- 3. Dueling DQN
+ 3. Dueling DQN (Simple implementation)
  - [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/abs/1511.06581v3)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Dueling%20DQN/Dueling%20DQN%20MountainCar-v0.png)
- 4. Policy Gradient
+ 4. Policy Gradient (Simple implementation)
  - [Policy Gradient Methods for Reinforcement Learning with Function Approximation](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Policy%20Gradient/Policy%20Gradient.png)
- 5. Deep Deterministic Policy Gradient
+ 5. Deep Deterministic Policy Gradient (Detailed implementation)
  - [Continuous Control with Deep Reinforcement Learning](https://arxiv.org/abs/1509.02971)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/DDPG/DDPG_Pendulum-v0.png)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/DDPG/LunarLanderContinuous_v2.png)
- 6. Proximal Policy Optimization
+ 6. Proximal Policy Optimization (Simple implementation)
  - [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)
  - [Emergence of Locomotion Behaviours in Rich Environments](https://arxiv.org/abs/1707.02286)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/PPO/PPO_CartPole_v0.png)
- 7. TD3
+ 7. TD3 (Detailed implementation)
  - [Addressing Function Approximation Error in Actor-Critic Methods](https://arxiv.org/abs/1802.09477)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/TD3/TD3_Pendulum-v0.png)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/TD3/LunarLanderContinuous_v2.png)
