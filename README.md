@@ -52,13 +52,13 @@ Please refer to [this repository](https://github.com/openai/mujoco-py)
  1. DQN 
  - [Playing Atari with Deep Reinforcement Learning](https://arxiv.org/abs/1312.5602v1)
  - [Human-level control through deep reinforcement learning](https://www.nature.com/articles/nature14236)    
-  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Nature%20DQN/DQN%20MountainCar-v0.png)
+  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Nature_DQN/DQN-CartPole-v0.png)
  2. Double DQN
  - [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461v3)
-  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Double%20DQN/Double%20DQN%20MountainCar-v0.png)
+  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Double_DQN/Double-DQN-CartPole-v0.png)
  3. Dueling DQN 
  - [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/abs/1511.06581v3)
-  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Dueling%20DQN/Dueling%20DQN%20MountainCar-v0.png)
+  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Dueling_DQN/Dueling-DQN-CartPole-v0.png)
  4. Policy Gradient 
  - [Policy Gradient Methods for Reinforcement Learning with Function Approximation](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Policy%20Gradient/Policy%20Gradient.png)

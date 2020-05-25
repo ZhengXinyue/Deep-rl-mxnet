@@ -23,7 +23,7 @@ class DuelingNetwork(gluon.nn.Block):
         self.advantage_dense = gluon.nn.Dense(self.n_actions)
         self.state_value_dense = gluon.nn.Dense(1)
 
-    # different from DQN and Double DQN
+    # different from DQN and Double_DQN
     def forward(self, state):
         common_value = self.dense1(self.dense0(state))
         advantage = self.advantage_dense(common_value)
@@ -115,7 +115,7 @@ class DuelingDQN:
     def replace_parameters(self):
         self.main_network.save_parameters('Dueling_DQN_temp_params')
         self.target_network.load_parameters('Dueling_DQN_temp_params')
-        print('Dueling DQN parameters replaced')
+        print('Dueling_DQN parameters replaced')
 
     def save_parameters(self):
         self.target_network.save_parameters('Dueling_DQN_target_network_parameters')
@@ -176,6 +176,6 @@ if __name__ == '__main__':
     plt.plot(episode_reward_list)
     plt.xlabel('episode')
     plt.ylabel('episode reward')
-    plt.title('Dueling DQN CartPole-v0')
+    plt.title('Dueling_DQN CartPole-v0')
     plt.savefig('./Dueling-DQN-CartPole-v0.png')
     plt.show()

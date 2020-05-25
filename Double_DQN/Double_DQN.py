@@ -108,7 +108,7 @@ class DoubleDQN:
     def replace_parameters(self):
         self.main_network.save_parameters('Double_DQN_temp_params')
         self.target_network.load_parameters('Double_DQN_temp_params')
-        print('Double DQN parameters replaced')
+        print('Double_DQN parameters replaced')
 
     def save_parameters(self):
         self.target_network.save_parameters('Double_DQN_target_network_parameters')
@@ -169,6 +169,6 @@ if __name__ == '__main__':
     plt.plot(episode_reward_list)
     plt.xlabel('episode')
     plt.ylabel('episode reward')
-    plt.title('Double DQN CartPole-v0')
+    plt.title('Double_DQN CartPole-v0')
     plt.savefig('./Double-DQN-CartPole-v0.png')
     plt.show()
