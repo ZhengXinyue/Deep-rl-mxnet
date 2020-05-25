@@ -9,3 +9,14 @@ __pycache__/
 /Double_DQN/Double_DQN_target_network_parameters
 /Nature_DQN/DQN_main_network_parameters
 /Nature_DQN/DQN_target_network_parameters
+/Policy_Gradient/Policy_Gradient_parameters
+/.flake8
+/TD3/TD3 LunarLander main actor network.params
+/TD3/TD3 LunarLander target critic network.params
+/TD3/TD3 LunarLander target actor network.params
+/TD3/TD3 LunarLander main critic network.params
+/TD3/
+/DDPG/DDPG Pendulum Main Actor.params
+/DDPG/DDPG Pendulum Target Critic.params
+/DDPG/DDPG Pendulum Target Actor.params
+/DDPG/DDPG Pendulum Main Critic.params

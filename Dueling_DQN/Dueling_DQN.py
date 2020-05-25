@@ -1,6 +1,4 @@
 import random
-from collections import deque
-import time
 
 import gym
 import numpy as np
@@ -9,7 +7,6 @@ import matplotlib.pyplot as plt
 import mxnet as mx
 from mxnet import gluon, nd, autograd, init
 from mxnet.gluon import loss as gloss
-import gluonbook as gb
 
 from utils import MemoryBuffer
 

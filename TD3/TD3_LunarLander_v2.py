@@ -1,42 +1,14 @@
 import random
-from collections import deque
-import time
+from functools import reduce
 
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
-
 import mxnet as mx
 from mxnet import gluon, nd, autograd, init
 from mxnet.gluon import loss as gloss, nn
-import gluonbook as gb
 
-
-class MemoryBuffer:
-    def __init__(self, buffer_size, ctx):
-        self.buffer = deque(maxlen=buffer_size)
-        self.maxsize = buffer_size
-        self.ctx = ctx
-
-    def __len__(self):
-        return len(self.buffer)
-
-    def __iter__(self):
-        return iter(self.buffer)
-
-    def sample(self, batch_size):
-        assert len(self.buffer) > batch_size
-        minibatch = random.sample(self.buffer, batch_size)
-        state_batch = nd.array([data[0] for data in minibatch], ctx=self.ctx)
-        action_batch = nd.array([data[1] for data in minibatch], ctx=self.ctx)
-        reward_batch = nd.array([data[2] for data in minibatch], ctx=self.ctx)
-        next_state_batch = nd.array([data[3] for data in minibatch], ctx=self.ctx)
-        done = nd.array([data[4] for data in minibatch], ctx=self.ctx)
-        return state_batch, action_batch, reward_batch, next_state_batch, done
-
-    def store_transition(self, state, action, reward, next_state, done):
-        transition = (state, action, reward, next_state, done)
-        self.buffer.append(transition)
+from utils import MemoryBuffer
 
 
 class Actor(nn.Block):
@@ -137,22 +109,26 @@ class TD3:
         # no noise clip
         noise = nd.normal(loc=0, scale=self.explore_noise, shape=action.shape, ctx=self.ctx)
         action += noise
-        clipped_action = self.action_clip(action).squeeze()
+        clipped_action = self.action_clip(action)
         return clipped_action
 
+    # when you test the agent, use this to choose action.
     def choose_action_evaluate(self, state):
         state = nd.array([state], ctx=self.ctx)
         action = self.main_actor_network(state)
         return action
 
+    # after adding the noise to action, you need to clip it to restrain it between available action bound.
+    # Maybe you have a better way to do it. I think i make it too complicated!!!!
     def action_clip(self, action):
-        if len(action[0]) == 2:
-            action0 = nd.clip(action[:, 0], float(self.action_bound[0][0].asnumpy()), float(self.action_bound[0][1].asnumpy()))
-            action1 = nd.clip(action[:, 1], float(self.action_bound[1][0].asnumpy()), float(self.action_bound[1][1].asnumpy()))
-            clipped_action = nd.concat(action0.reshape(-1, 1), action1.reshape(-1, 1))
-        else:
-            clipped_action = nd.clip(action, float(self.action_bound[0][0].asnumpy()), float(self.action_bound[0][1].asnumpy()))
-        return clipped_action
+        low_bound = [float(self.action_bound[i][0].asnumpy()) for i in range(self.action_dim)]
+        high_bound = [float(self.action_bound[i][1].asnumpy()) for i in range(self.action_dim)]
+        bound = list(zip(low_bound, high_bound))
+        # clip and reshape
+        action_list = [nd.clip(action[:, i], bound[i][0], bound[i][1]).reshape(-1, 1) for i in range(self.action_dim)]
+        # concat
+        clipped_action = reduce(nd.concat, action_list)
+        return clipped_action.squeeze()
 
     def soft_update(self, target_network, main_network):
         target_parameters = target_network.collect_params().keys()
@@ -230,25 +206,24 @@ class TD3:
         self.target_critic_network2.load_parameters('TD3 LunarLander target critic network.params')
 
 
-def main():
+if __name__ == '__main__':
     env = gym.make('LunarLanderContinuous-v2').unwrapped
-    seed = 3453534
+    seed = 66
     env.seed(seed)
     mx.random.seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-    ctx = gb.try_gpu()
-    # ctx = mx.cpu()
-    max_episodes = 300
+    ctx = mx.cpu()
+    max_episodes = 200
     max_episode_steps = 2000
-    env_action_bound = [[-1, 1], [-1, 1]]
+    env_action_bound = list(zip(env.action_space.low, env.action_space.high))
 
     agent = TD3(action_dim=int(env.action_space.shape[0]),
                 action_bound=env_action_bound,
                 actor_learning_rate=0.001,
                 critic_learning_rate=0.001,
                 batch_size=64,
-                memory_size=100000,
+                memory_size=10000,
                 gamma=0.99,
                 tau=0.005,
                 explore_steps=1000,
@@ -259,66 +234,38 @@ def main():
                 ctx=ctx)
 
     episode_reward_list = []
-    mode = input("train or test: ")
 
-    if mode == 'train':
-        render = False
-        for episode in range(max_episodes):
-            episode_reward = 0
-            state = env.reset()
-            for step in range(max_episode_steps):
-                if render:
-                    env.render()
-                if agent.total_steps < agent.explore_steps:
-                    action = env.action_space.sample()
-                    agent.total_steps += 1
-                else:
-                    action = agent.choose_action_train(state)
-                    action = action.asnumpy()
-                    agent.total_steps += 1
-                next_state, reward, done, info = env.step(action)
-                agent.memory_buffer.store_transition(state, action, reward, next_state, done)
-                episode_reward += reward
-                state = next_state
-                if agent.total_steps >= agent.explore_steps:
-                    agent.update()
-                if done:
-                    break
-            print('episode  %d  reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
-            episode_reward_list.append(episode_reward)
-        agent.save()
-
-    elif mode == 'test':
-        render = True
-        agent.load()
-        for episode in range(max_episodes):
-            episode_reward = 0
-            state = env.reset()
-            for step in range(max_episode_steps):
-                if render:
-                    env.render()
+    render = False
+    for episode in range(max_episodes):
+        episode_reward = 0
+        state = env.reset()
+        for step in range(max_episode_steps):
+            if render:
+                env.render()
+            # explore for a few steps
+            if agent.total_steps < agent.explore_steps:
+                action = env.action_space.sample()
+                agent.total_steps += 1
+            else:
                 action = agent.choose_action_train(state)
                 action = action.asnumpy()
-                next_state, reward, done, info = env.step(action)
-                agent.memory_buffer.store_transition(state, action, reward, next_state, done)
-                episode_reward += reward
-                state = next_state
-                if done:
-                    break
-            print('episode  %d  reward  %f  total steps:  %d' % (episode, episode_reward, agent.total_steps))
-            episode_reward_list.append(episode_reward)
-    else:
-        raise NameError('Wrong input')
-
+                agent.total_steps += 1
+            next_state, reward, done, info = env.step(action)
+            agent.memory_buffer.store_transition(state, action, reward, next_state, done)
+            episode_reward += reward
+            state = next_state
+            if agent.total_steps >= agent.explore_steps:
+                agent.update()
+            if done:
+                print('episode %d ends with reward %f at steps %d' % (episode, episode_reward, agent.total_steps))
+                episode_reward_list.append(episode_reward)
+                break
+    agent.save()
     env.close()
+
     plt.plot(episode_reward_list)
     plt.xlabel('episode')
-    plt.ylabel('reward')
+    plt.ylabel('episode reward')
     plt.title('TD3 LunarLanderContinuous-v2')
-    if mode == 'train':
-        plt.savefig('./LunarLanderContinuous_v2')
+    plt.savefig('./TD3-LunarLanderContinuous-v2')
     plt.show()
-
-
-if __name__ == '__main__':
-    main()

@@ -1,20 +1,17 @@
-import time
-
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
 
 import mxnet as mx
 from mxnet import gluon, nd, autograd, init
-import gluonbook as gb
 
 
 class PGNetwork(gluon.nn.Block):
     def __init__(self, n_actions):
         super(PGNetwork, self).__init__()
         self.n_actions = n_actions
-        self.dense0 = gluon.nn.Dense(32, activation='relu')
-        self.dense1 = gluon.nn.Dense(16, activation='relu')
+        self.dense0 = gluon.nn.Dense(400, activation='relu')
+        self.dense1 = gluon.nn.Dense(300, activation='relu')
         self.dense2 = gluon.nn.Dense(self.n_actions)
 
     def forward(self, state):
@@ -28,12 +25,10 @@ class PG:
                  learning_rate,
                  gamma,
                  n_action,
-                 n_feature,
                  ctx):
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.n_actions = n_action
-        self.n_feature = n_feature
         self.ctx = ctx
 
         self.network = PGNetwork(self.n_actions)
@@ -86,68 +81,51 @@ class PG:
         self.rewards = []
 
     def save(self):
-        self.network.save_parameters('Policy Gradient parameters')
+        self.network.save_parameters('Policy_Gradient_parameters')
         print('Parameters saved')
 
     def load(self):
-        self.network.load_parameters('Policy Gradient parameters')
+        self.network.load_parameters('Policy_Gradient_parameters')
         print('Parameters loaded')
 
 
-# split a list into n sublists and sum them
-def smooth_function(l, n):
-    m = []
-    split_list = np.array_split(l, n)
-    for i in split_list:
-        m.append(np.mean(i))
-    return m
+if __name__ == '__main__':
+    seed = 7777777
+    np.random.seed(seed)
+    mx.random.seed(seed)
+    env = gym.make('CartPole-v0').unwrapped
+    env.seed(seed)
+    render = False
+    ctx = mx.cpu()
 
+    agent = PG(learning_rate=0.0005,
+               gamma=0.99,
+               n_action=env.action_space.n,
+               ctx=ctx)
 
-t = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-seed = 3
-np.random.seed(seed)
-mx.random.seed(seed)
-env = gym.make('CartPole-v0').unwrapped
-env.seed(seed)
-RENDER = False
-ctx = gb.try_gpu()
+    episode_reward_list = []
+    for i_episode in range(200):
+        state = env.reset()
+        episode_reward = 0
+        while True:
+            if render:
+                env.render()
+            action = agent.choose_action(state)
+            next_state, reward, done, info = env.step(action)
+            agent.store_transition(state, action, reward)
+            episode_reward += reward
+            if done:
+                print('episode %d ends with reward %d' % (i_episode, episode_reward))
+                episode_reward_list.append(episode_reward)
+                agent.learn()
+                break
+            state = next_state
+    agent.save()
+    env.close()
 
-agent = PG(learning_rate=0.0005,
-           gamma=0.99,
-           n_action=env.action_space.n,
-           n_feature=env.observation_space.shape[0],
-           ctx=ctx)
-
-# you can get good performance if load the parameters
-# agent.load()
-episode_reward_list = []
-for i_episode in range(1000):
-    state = env.reset()
-    while True:
-        if RENDER:
-            env.render()
-        action = agent.choose_action(state)
-        next_state, reward, done, info = env.step(action)
-        agent.store_transition(state, action, reward)
-        if done:
-            episode_reward = sum(agent.rewards)
-            print('episode %d ends with reward %d' % (i_episode, episode_reward))
-            episode_reward_list.append(episode_reward)
-            mean_reward = sum(episode_reward_list[-100:]) / 100
-            # render if get good performance
-            if mean_reward > 195:
-                RENDER = True
-            agent.learn()
-            break
-        state = next_state
-agent.save()
-env.close()
-
-
-l = smooth_function(episode_reward_list, 250)
-plt.plot(l)
-plt.xlabel('episode')
-plt.ylabel('episode reward')
-plt.title('Policy Gradient CartPole-v0')
-plt.savefig('./Policy Gradient.png')
-plt.show()
+    plt.plot(episode_reward_list)
+    plt.xlabel('episode')
+    plt.ylabel('episode reward')
+    plt.title('Policy_Gradient CartPole-v0')
+    plt.savefig('./Policy-Gradient-CartPole-v0.png')
+    plt.show()

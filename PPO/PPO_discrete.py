@@ -1,20 +1,14 @@
-
 from collections import namedtuple
-
 import random
-import time
-import time
 
 import numpy as np
 import matplotlib.pyplot as plt
 import gym
 
 import mxnet as mx
-from mxnet import autograd, nd, init, gluon
+from mxnet import autograd, nd, gluon
 from mxnet.gluon import loss as gloss, nn
 import gluonbook as gb
-
-time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 
 
 class Actor(nn.Block):
@@ -77,7 +71,7 @@ class PPO:
         self.actor_optimizer = gluon.Trainer(self.actor_network.collect_params(),
                                              'adam', {'learning_rate': self.actor_learning_rate})
         self.critic_optimizer = gluon.Trainer(self.critic_network.collect_params(),
-                                             'adam', {'learning_rate': self.critic_learning_rate})
+                                              'adam', {'learning_rate': self.critic_learning_rate})
 
     def choose_action(self, state):
         state = nd.array([state], ctx=self.ctx)
@@ -123,7 +117,6 @@ class PPO:
             assert len(self.buffer) >= self.batch_size
             sample_index = random.sample(range(len(self.buffer)), self.batch_size)
             for index in sample_index:
-
                 # optimize the actor network
                 with autograd.record():
                     Gt_index = Gt[index]
@@ -136,7 +129,7 @@ class PPO:
                     ratio = action_prob / old_action_log_prob[index]
                     surr1 = ratio * advantage
                     surr2 = nd.clip(ratio, 1 - self.clip_param, 1 + self.clip_param) * advantage
-                    action_loss = -nd.mean(nd.minimum(surr1, surr2))      # attention
+                    action_loss = -nd.mean(nd.minimum(surr1, surr2))  # attention
                 self.actor_network.collect_params().zero_grad()
                 action_loss.backward()
                 actor_network_params = [p.data() for p in self.actor_network.collect_params().values()]
@@ -160,63 +153,60 @@ class PPO:
         del self.buffer[:]
 
 
-env = gym.make('CartPole-v0').unwrapped
-seed = 23424
-env.seed(1)
-mx.random.seed(seed)
-np.random.seed(seed)
-random.seed(seed)
-ctx = gb.try_gpu()
-
-Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'reward', 'next_state'])
-num_state = env.observation_space.shape[0]
-num_acion = env.action_space.n
-
-
-def main():
-    render = False
-    episode_reward_list = []
-    agent = PPO(n_action=num_acion,
-                clip_param=0.2,
-                max_grad_norm=0.5,
-                ppo_update_times=10,
-                buffer_capacity=1000,
-                batch_size=32,
-                gamma=0.99,
-                actor_learning_rate=0.001,
-                critic_learning_rate=0.003,
-                ctx=ctx)
-    # agent.load()
-    for episode in range(90):
-        state = env.reset()
-        while True:
-            if render:
-                env.render()
-            action, acion_prob = agent.choose_action(state)
-            next_state, reward, done, _ = env.step(action)
-            trans = Transition(state, action, acion_prob, reward, next_state)
-            agent.store_transition(trans)
-            if done:
-                episode_reward = sum([t.reward for t in agent.buffer])
-                print('episode %d  reward  %d' % (episode, episode_reward))
-                episode_reward_list.append(episode_reward)
-                mean_reward = sum(episode_reward_list[-50:]) / 50
-                if mean_reward > 195:
-                    render = True
-                if len(agent.buffer) >= agent.batch_size:
-                    agent.update()
-                break
-            state = next_state
-    agent.save_parameters()
-    env.close()
-    
-    plt.plot(episode_reward_list)
-    plt.xlabel('episode')
-    plt.ylabel('reward')
-    plt.title('PPO CartPole-v0')
-    plt.savefig('./PPO_CartPole_v0')
-    plt.show()
-
-
 if __name__ == '__main__':
-    main()
+    env = gym.make('CartPole-v0').unwrapped
+    seed = 23424
+    env.seed(1)
+    mx.random.seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    ctx = gb.try_gpu()
+
+    Transition = namedtuple('Transition', ['state', 'action', 'a_log_prob', 'reward', 'next_state'])
+    num_state = env.observation_space.shape[0]
+    num_acion = env.action_space.n
+
+
+    def main():
+        render = False
+        episode_reward_list = []
+        agent = PPO(n_action=num_acion,
+                    clip_param=0.2,
+                    max_grad_norm=0.5,
+                    ppo_update_times=10,
+                    buffer_capacity=1000,
+                    batch_size=32,
+                    gamma=0.99,
+                    actor_learning_rate=0.001,
+                    critic_learning_rate=0.003,
+                    ctx=ctx)
+
+        for episode in range(90):
+            state = env.reset()
+            while True:
+                if render:
+                    env.render()
+                action, acion_prob = agent.choose_action(state)
+                next_state, reward, done, _ = env.step(action)
+                trans = Transition(state, action, acion_prob, reward, next_state)
+                agent.store_transition(trans)
+                if done:
+                    episode_reward = sum([t.reward for t in agent.buffer])
+                    print('episode %d  reward  %d' % (episode, episode_reward))
+                    episode_reward_list.append(episode_reward)
+                    mean_reward = sum(episode_reward_list[-50:]) / 50
+                    if mean_reward > 195:
+                        render = True
+                    if len(agent.buffer) >= agent.batch_size:
+                        agent.update()
+                    break
+                state = next_state
+        agent.save_parameters()
+        env.close()
+
+        plt.plot(episode_reward_list)
+        plt.xlabel('episode')
+        plt.ylabel('reward')
+        plt.title('PPO CartPole-v0')
+        plt.savefig('./PPO-CartPole-v0')
+        plt.show()
