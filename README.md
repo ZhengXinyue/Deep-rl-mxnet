@@ -52,9 +52,9 @@ Please refer to [this repository](https://github.com/openai/mujoco-py)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Double_DQN/Double-DQN-CartPole-v0.png)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Dueling_DQN/Dueling-DQN-CartPole-v0.png)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/Policy_Gradient/Policy-Gradient-CartPole-v0.png)
-  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/DDPG/DDPG-Pendulum-v0.py)
+  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/DDPG/DDPG-Pendulum-v0.png)
   ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/PPO/PPO-CartPole-v0.png)
-  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/TD3/TD3-LunarLander-v2.py)
+  ![image](https://github.com/ZhengXinyue/Deep-rl-mxnet/blob/master/TD3/TD3-LunarLander-v2.png)
   
   
 ## Maybe In the future:

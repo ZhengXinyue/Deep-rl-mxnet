@@ -15,7 +15,6 @@ __pycache__/
 /TD3/TD3 LunarLander target critic network.params
 /TD3/TD3 LunarLander target actor network.params
 /TD3/TD3 LunarLander main critic network.params
-/TD3/
 /DDPG/DDPG Pendulum Main Actor.params
 /DDPG/DDPG Pendulum Target Critic.params
 /DDPG/DDPG Pendulum Target Actor.params
