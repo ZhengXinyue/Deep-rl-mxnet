@@ -1,0 +1,10 @@
+.idea
+/Dueling DQN/Dueling_DQN_temp_params
+/Double DQN/Double_DQN_temp_params
+/Nature DQN/DQN_temp_params
+/Double DQN/Double_DQN_main_network_parameters
+/Dueling DQN/Dueling_DQN_target_network_parameters
+/Dueling DQN/Dueling_DQN_main_network_parameters
+/Double DQN/Double_DQN_target_network_parameters
+/Nature DQN/DQN_main_network_parameters
+/Nature DQN/DQN_target_network_parameters

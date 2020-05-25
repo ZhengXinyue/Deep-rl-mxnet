@@ -1,24 +1,23 @@
 import random
-from collections import deque
-import time
 
 import gym
 import numpy as np
 import matplotlib.pyplot as plt
-
 import mxnet as mx
 from mxnet import gluon, nd, autograd, init
 from mxnet.gluon import loss as gloss
-import gluonbook as gb
 
 
-class Q_Network(gluon.nn.Block):
+from utils import MemoryBuffer
+
+
+class QNetwork(gluon.nn.Block):
     def __init__(self, n_action):
-        super(Q_Network, self).__init__()
+        super(QNetwork, self).__init__()
         self.n_action = n_action
 
-        self.dense0 = gluon.nn.Dense(32, activation='relu')
-        self.dense1 = gluon.nn.Dense(16, activation='relu')
+        self.dense0 = gluon.nn.Dense(400, activation='relu')
+        self.dense1 = gluon.nn.Dense(300, activation='relu')
         self.dense2 = gluon.nn.Dense(self.n_action)
 
     def forward(self, state):
@@ -26,70 +25,39 @@ class Q_Network(gluon.nn.Block):
         return q_value
 
 
-class MemoryBuffer:
-    def __init__(self, buffer_size, ctx):
-        self.buffer = deque(maxlen=buffer_size)
-        self.maxsize = buffer_size
-        self.ctx = ctx
-
-    def __len(self):
-        return len(self.buffer)
-
-    def __iter__(self):
-        return iter(self.buffer)
-
-    def sample(self, batch_size):
-        assert len(self.buffer) > batch_size
-        minibatch = random.sample(self.buffer, batch_size)
-        state_batch = nd.array([data[0] for data in minibatch], ctx=self.ctx)
-        action_batch = nd.array([data[1] for data in minibatch], ctx=self.ctx)
-        reward_batch = nd.array([data[2] for data in minibatch], ctx=self.ctx)
-        next_state_batch = nd.array([data[3] for data in minibatch], ctx=self.ctx)
-        return state_batch, action_batch, reward_batch, next_state_batch
-
-    def store_transition(self, state, action, reward, next_state):
-        transition = (state, action, reward, next_state)
-        self.buffer.append(transition)
-
-
 class DQN:
     def __init__(self,
                  n_action,
-                 n_feature,
                  init_epsilon,
                  final_epsilon,
                  gamma,
                  buffer_size,
                  batch_size,
                  replace_iter,
-                 annealing_end,
+                 annealing,
                  learning_rate,
                  ctx
                  ):
         self.n_action = n_action
-        self.n_feature = n_feature
         self.epsilon = init_epsilon
         self.init_epsilon = init_epsilon
         self.final_epsilon = final_epsilon
-        # discount factor
-        self.gamma = gamma
-        # memory buffer size
+        self.gamma = gamma      # discount factor
         self.buffer_size = buffer_size
         self.batch_size = batch_size
-        # replace the parameters of the target network every T time steps
-        self.replace_iter = replace_iter
-        # The number of step it will take to linearly anneal the epsilon to its min value
-        self.annealing_end = annealing_end
+        self.replace_iter = replace_iter        # replace the parameters of the target network every T time steps
+
+        self.annealing = annealing    # The number of step it will take to linearly anneal the epsilon to its min value
         self.learning_rate = learning_rate
         self.ctx = ctx
 
         self.total_steps = 0
-        self.replay_buffer = MemoryBuffer(self.buffer_size, ctx)       # use deque
+        self.replay_buffer = MemoryBuffer(self.buffer_size, ctx)
 
         # build the network
-        self.target_network = Q_Network(n_action)
-        self.main_network = Q_Network(n_action)
-        self.target_network.collect_params().initialize(init.Xavier(), ctx=ctx)  # initialize the params
+        self.target_network = QNetwork(n_action)
+        self.main_network = QNetwork(n_action)
+        self.target_network.collect_params().initialize(init.Xavier(), ctx=ctx)
         self.main_network.collect_params().initialize(init.Xavier(), ctx=ctx)
 
         # optimize the main network
@@ -106,23 +74,22 @@ class DQN:
             action = random.choice(range(self.n_action))
         # anneal
         self.epsilon = max(self.final_epsilon,
-                           self.epsilon - (self.init_epsilon - self.final_epsilon) / self.annealing_end)
+                           self.epsilon - (self.init_epsilon - self.final_epsilon) / self.annealing)
         self.total_steps += 1
         return action
 
     def update(self):
-        state_batch, action_batch, reward_batch, next_state_batch = self.replay_buffer.sample(
-            self.batch_size)
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.replay_buffer.sample(self.batch_size)
         with autograd.record():
-            # get the maxQ(s',a')
-            all_next_q_value = self.target_network(next_state_batch).detach()  # only get gradient of main network
-            max_next_q_value = nd.max(all_next_q_value, axis=1)
-
-            target_q_value = reward_batch + self.gamma * max_next_q_value
-
             # get the Q(s,a)
             all_current_q_value = self.main_network(state_batch)
             main_q_value = nd.pick(all_current_q_value, action_batch)
+
+            # get the maxQ(s',a')
+            all_next_q_value = self.target_network(next_state_batch).detach()   # only get gradient of main network
+            max_next_q_value = nd.max(all_next_q_value, axis=1)
+
+            target_q_value = reward_batch + (1 - done_batch) * self.gamma * max_next_q_value
 
             # record loss
             loss = gloss.L2Loss()
@@ -134,86 +101,67 @@ class DQN:
     def replace_parameters(self):
         self.main_network.save_parameters('DQN_temp_params')
         self.target_network.load_parameters('DQN_temp_params')
-        print('DQN_parameters replaced')
+        print('DQN parameters replaced')
 
     def save_parameters(self):
-        self.target_network.save_parameters('DQN target network parameters')
-        self.main_network.save_parameters('DQN main network parameters')
+        self.target_network.save_parameters('DQN_target_network_parameters')
+        self.main_network.save_parameters('DQN_main_network_parameters')
 
-    #
     def load_parameters(self):
-        self.target_network.load_parameters('DQN target network parameters')   # model path
-        self.main_network.load_parameters('DQN main network parameters')
+        self.target_network.load_parameters('DQN_target_network_parameters')
+        self.main_network.load_parameters('DQN_main_network_parameters')
 
 
-# split a list into n sublists and sum them
-def smooth_function(l, n):
-    m = []
-    split_list = np.array_split(l, n)
-    for i in split_list:
-        m.append(np.mean(i))
-    return m
+if __name__ == '__main__':
+    seed = 7777777
+    mx.random.seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    ctx = mx.cpu()
+    env = gym.make('CartPole-v0').unwrapped
+    env.seed(seed)
+    render = False
+    episodes = 400
 
+    agent = DQN(n_action=env.action_space.n,
+                init_epsilon=1,
+                final_epsilon=0.1,
+                gamma=0.99,
+                buffer_size=3000,
+                batch_size=32,
+                replace_iter=1000,
+                annealing=3000,
+                learning_rate=0.0001,
+                ctx=ctx
+                )
 
-seed = 3
-mx.random.seed(seed)
-random.seed(seed)
-np.random.seed(seed)
-ctx = gb.try_gpu()
-t = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
-env = gym.make('MountainCar-v0').unwrapped
-env.seed(seed)
-render = False
+    episode_reward_list = []
+    for episode in range(episodes):
+        state = env.reset()
+        episode_reward = 0
+        while True:
+            if render:
+                env.render()
+            action = agent.choose_action(state)
+            next_state, reward, done, info = env.step(action)
+            episode_reward += reward
+            agent.replay_buffer.store_transition(state, action, reward, next_state, done)
+            if agent.total_steps > 1000:
+                agent.update()
+                if agent.total_steps % agent.replace_iter == 0:
+                    agent.replace_parameters()
 
+            if done:
+                print('episode %d ends with reward %d at steps %d' % (episode, episode_reward, agent.total_steps))
+                episode_reward_list.append(episode_reward)
+                break
+            state = next_state
+    agent.save_parameters()
+    env.close()
 
-agent = DQN(n_action=env.action_space.n,
-            n_feature=env.observation_space.shape[0],
-            init_epsilon=1,
-            final_epsilon=0.1,
-            gamma=0.99,
-            buffer_size=50000,
-            batch_size=32,
-            replace_iter=5000,
-            annealing_end=300000,
-            learning_rate=0.00005,
-            ctx=ctx
-            )
-
-# if you want to load model
-# agent.load_parameters()
-episode_steps_list = []
-for i_episode in range(100):
-    state = env.reset()
-    episode_steps = 0
-    while True:
-        if render:
-            env.render()
-        action = agent.choose_action(state)
-        next_state, reward, done, info = env.step(action)
-        position, velocity = next_state
-
-        my_reward = abs(position - (-0.5))
-
-        agent.replay_buffer.store_transition(state, action, my_reward, next_state)
-        if agent.total_steps > 1000:
-            agent.update()
-        if agent.total_steps > 1000 and agent.total_steps % agent.replace_iter == 0:
-            agent.replace_parameters()
-
-        episode_steps += 1
-
-        if done:
-            print('DQN episode {} ends with success at time step {}'.format(i_episode, episode_steps))
-            episode_steps_list.append(episode_steps)
-            break
-        state = next_state
-agent.save_parameters()
-env.close()
-
-plt.plot(episode_steps_list)
-plt.ylim(0, 20000)
-plt.xlabel('episode')
-plt.ylabel('episode steps')
-plt.title('DQN MountainCar-v0')
-plt.savefig('./DQN MountainCar-v0.png')
-plt.show()
+    plt.plot(episode_reward_list)
+    plt.xlabel('episode')
+    plt.ylabel('episode reward')
+    plt.title('DQN CartPole-v0')
+    plt.savefig('./DQN-CartPole-v0.png')
+    plt.show()
