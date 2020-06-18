@@ -21,4 +21,6 @@ __pycache__/
 /DDPG/DDPG Pendulum Main Critic.params
 /A2C/A2C_CartPole_actor_network.params
 /A2C/A2C_CartPole_critic_network.params
-/A2C/A2C_CartPole_system_model.params
+/A2C_MPC/A2C_CartPole_actor_network.params
+/A2C_MPC/A2C_CartPole_critic_network.params
+/A2C_MPC/A2C_CartPole_system_model.params
